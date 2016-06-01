@@ -1,6 +1,6 @@
 {
   "name": "async-try-catch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {
@@ -10,7 +10,8 @@
   "devDependencies": {
     "expect.js": "^0.3.1",
     "jshint": "^2.9.2",
-    "mocha": "^2.5.3"
+    "mocha": "^2.5.3",
+    "nextgen-events": "^0.5.14"
   },
   "scripts": {
     "test": "mocha -R dot"
@@ -30,7 +31,7 @@
     "url": "https://github.com/cronvel/async-try-catch/issues"
   },
   "copyright": {
-    "title": "Next-Gen Events",
+    "title": "Async Try-Catch",
     "years": [
       2015,
       2016

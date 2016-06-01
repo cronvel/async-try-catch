@@ -1,8 +1,8 @@
 
 
-# Async Try Catch
+# Async Try-Catch
 
-Perform async try catch.
+The name says it all: it performs async try catch. 
 
 * License: MIT
 * Current status: beta

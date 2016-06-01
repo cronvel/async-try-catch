@@ -1,5 +1,5 @@
 /*
-	Next Gen Events
+	Async Try-Catch
 	
 	Copyright (c) 2015 - 2016 Cédric Ronvel
 	
@@ -32,6 +32,9 @@
 var AsyncTryCatch = require( '../lib/AsyncTryCatch.js' ) ;
 var asyncTry = AsyncTryCatch.try ;
 
+var Events = require( 'events' ) ;
+var NextGenEvents = require( 'nextgen-events' ) ;
+
 var expect = require( 'expect.js' ) ;
 
 
@@ -42,7 +45,7 @@ var expect = require( 'expect.js' ) ;
 
 
 
-describe( "Async Try Catch" , function() {
+describe( "Synchronous" , function() {
 	
 	it( "Sync" , function() {
 		
@@ -53,6 +56,27 @@ describe( "Async Try Catch" , function() {
 			expect( error.message ).to.be( 'sync error' ) ;
 		} ) ;
 	} ) ;
+	
+	it( "Sync, nested" , function() {
+		
+		asyncTry( function() {
+			asyncTry( function() {
+				throw new Error( 'inner sync error' ) ;
+			} )
+			.catch( function( error ) {
+				expect( error.message ).to.be( 'inner sync error' ) ;
+				throw new Error( 're-throw sync error' ) ;
+			} ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 're-throw sync error' ) ;
+		} ) ;
+	} ) ;
+} ) ;
+
+
+	
+describe( "setTimeout() and friends" , function() {
 	
 	it( "Async: setTimeout" , function( done ) {
 		
@@ -67,7 +91,7 @@ describe( "Async Try Catch" , function() {
 		} ) ;
 	} ) ;
 	
-	it( "Async: double setTimeout" , function( done ) {
+	it( "Async: nested setTimeout" , function( done ) {
 		
 		asyncTry( function() {
 			setTimeout( function() {
@@ -82,7 +106,7 @@ describe( "Async Try Catch" , function() {
 		} ) ;
 	} ) ;
 	
-	it( "Async: quintuple setTimeout" , function( done ) {
+	it( "Async: five nested setTimeout" , function( done ) {
 		
 		asyncTry( function() {
 			setTimeout( function() {
@@ -103,7 +127,7 @@ describe( "Async Try Catch" , function() {
 		} ) ;
 	} ) ;
 	
-	it( "Async: double setTimeout, double async try catch, throw from the inner catch should bubble up to the outer catch" , function( done ) {
+	it( "Async: nested setTimeout and async try catch, it should throw from the inner try, re-throw from the inner catch, bubble up to the outer catch" , function( done ) {
 		
 		asyncTry( function outerTry() {
 			
@@ -118,16 +142,73 @@ describe( "Async Try Catch" , function() {
 				.catch( function innerCatch( error ) {
 					expect( error.message ).to.be( 'inner setTimeout error' ) ;
 					//console.log( 'inner' , AsyncTryCatch.stack , "\n" ) ;
-					throw new Error( 'outer setTimeout error' ) ;
+					throw new Error( 're-throw setTimeout error' ) ;
 				} ) ;
 			} , 0 ) ;
 		} )
 		.catch( function outerCatch( error ) {
-			expect( error.message ).to.be( 'outer setTimeout error' ) ;
+			expect( error.message ).to.be( 're-throw setTimeout error' ) ;
 			//console.log( 'outer' , AsyncTryCatch.stack ) ;
 			done() ;
 		} ) ;
 	} ) ;
+} ) ;
+
+
+
+describe( "Events" , function() {
+	
+	it( "an exception thrown from a listener within an async-try closure should be catched" , function( done ) {
+		
+		var emitter = Object.create( Events.prototype ) ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , function() { throw new Error( 'argh!' ) ; } ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'argh!' ) ;
+			done() ;
+		} ) ;
+		
+		emitter.emit( 'damage' ) ;
+	} ) ;
+	
+	it( "an exception thrown from a listener, whose emit is within an async-try closure should be catched if everything is synchronous" , function( done ) {
+		// works because emit is sync here
+		
+		var emitter = Object.create( Events.prototype ) ;
+		
+		emitter.on( 'damage' , function() { throw new Error( 'argh!' ) ; } ) ;
+		
+		asyncTry( function() {
+			emitter.emit( 'damage' ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'argh!' ) ;
+			done() ;
+		} ) ;
+	} ) ;
+} ) ;
+
+
+
+describe( "NextGen Events" , function() {
+	
+	it( "an exception thrown from a listener within an async-try closure should be catched" , function( done ) {
+		
+		var emitter = Object.create( NextGenEvents.prototype ) ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , function() { throw new Error( 'argh!' ) ; } ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'argh!' ) ;
+			done() ;
+		} ) ;
+		
+		emitter.emit( 'damage' ) ;
+	} ) ;
+	
 } ) ;
 
 
