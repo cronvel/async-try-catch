@@ -78,7 +78,7 @@ describe( "Synchronous" , function() {
 	
 describe( "setTimeout() and friends" , function() {
 	
-	it( "Async: setTimeout" , function( done ) {
+	it( "setTimeout()" , function( done ) {
 		
 		asyncTry( function() {
 			setTimeout( function() {
@@ -91,7 +91,33 @@ describe( "setTimeout() and friends" , function() {
 		} ) ;
 	} ) ;
 	
-	it( "Async: nested setTimeout" , function( done ) {
+	it( "setImmediate()" , function( done ) {
+		
+		asyncTry( function() {
+			setImmediate( function() {
+				throw new Error( 'setImmediate error' ) ;
+			} , 0 ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'setImmediate error' ) ;
+			done() ;
+		} ) ;
+	} ) ;
+	
+	it( "process.nextTick()" , function( done ) {
+		
+		asyncTry( function() {
+			process.nextTick( function() {
+				throw new Error( 'nextTick error' ) ;
+			} , 0 ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'nextTick error' ) ;
+			done() ;
+		} ) ;
+	} ) ;
+	
+	it( "nested setTimeout" , function( done ) {
 		
 		asyncTry( function() {
 			setTimeout( function() {
@@ -106,7 +132,7 @@ describe( "setTimeout() and friends" , function() {
 		} ) ;
 	} ) ;
 	
-	it( "Async: five nested setTimeout" , function( done ) {
+	it( "five nested setTimeout" , function( done ) {
 		
 		asyncTry( function() {
 			setTimeout( function() {
@@ -127,7 +153,7 @@ describe( "setTimeout() and friends" , function() {
 		} ) ;
 	} ) ;
 	
-	it( "Async: nested setTimeout and async try catch, it should throw from the inner try, re-throw from the inner catch, bubble up to the outer catch" , function( done ) {
+	it( "nested setTimeout and async try catch, it should throw from the inner try, re-throw from the inner catch, bubble up to the outer catch" , function( done ) {
 		
 		asyncTry( function outerTry() {
 			
@@ -158,7 +184,7 @@ describe( "setTimeout() and friends" , function() {
 
 describe( "Events" , function() {
 	
-	it( "an exception thrown from a listener within an async-try closure should be catched" , function( done ) {
+	it( "an exception thrown synchronously from a listener within an async-try closure should be catched" , function( done ) {
 		
 		var emitter = Object.create( Events.prototype ) ;
 		
@@ -173,20 +199,23 @@ describe( "Events" , function() {
 		emitter.emit( 'damage' ) ;
 	} ) ;
 	
-	it( "an exception thrown from a listener, whose emit is within an async-try closure should be catched if everything is synchronous" , function( done ) {
-		// works because emit is sync here
+	it( "an exception thrown asynchronously from a listener within an async-try closure should be catched" , function( done ) {
 		
 		var emitter = Object.create( Events.prototype ) ;
 		
-		emitter.on( 'damage' , function() { throw new Error( 'argh!' ) ; } ) ;
-		
 		asyncTry( function() {
-			emitter.emit( 'damage' ) ;
+			emitter.on( 'damage' , function() {
+				setTimeout( function() {
+					throw new Error( 'delayed argh!' ) ;
+				} , 0 ) ;
+			} ) ;
 		} )
 		.catch( function( error ) {
-			expect( error.message ).to.be( 'argh!' ) ;
+			expect( error.message ).to.be( 'delayed argh!' ) ;
 			done() ;
 		} ) ;
+		
+		emitter.emit( 'damage' ) ;
 	} ) ;
 } ) ;
 
@@ -194,7 +223,7 @@ describe( "Events" , function() {
 
 describe( "NextGen Events" , function() {
 	
-	it( "an exception thrown from a listener within an async-try closure should be catched" , function( done ) {
+	it( "an exception thrown synchronously from a listener within an async-try closure should be catched" , function( done ) {
 		
 		var emitter = Object.create( NextGenEvents.prototype ) ;
 		
@@ -209,6 +238,24 @@ describe( "NextGen Events" , function() {
 		emitter.emit( 'damage' ) ;
 	} ) ;
 	
+	it( "an exception thrown asynchronously from a listener within an async-try closure should be catched" , function( done ) {
+		
+		var emitter = Object.create( NextGenEvents.prototype ) ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , function() {
+				setTimeout( function() {
+					throw new Error( 'delayed argh!' ) ;
+				} , 0 ) ;
+			} ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'delayed argh!' ) ;
+			done() ;
+		} ) ;
+		
+		emitter.emit( 'damage' ) ;
+	} ) ;
 } ) ;
 
 
