@@ -1,6 +1,6 @@
 {
   "name": "async-try-catch",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {
@@ -20,9 +20,9 @@
     "url": "https://github.com/cronvel/async-try-catch.git"
   },
   "keywords": [
-  	"async",
-  	"try",
-  	"catch"
+    "async",
+    "try",
+    "catch"
   ],
   "author": "Cédric Ronvel",
   "license": "MIT",
