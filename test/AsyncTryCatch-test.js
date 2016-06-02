@@ -217,6 +217,8 @@ describe( "Events" , function() {
 		
 		emitter.emit( 'damage' ) ;
 	} ) ;
+	
+	it( "should resume the event emitting" ) ;
 } ) ;
 
 
@@ -247,6 +249,60 @@ describe( "NextGen Events" , function() {
 				setTimeout( function() {
 					throw new Error( 'delayed argh!' ) ;
 				} , 0 ) ;
+			} ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'delayed argh!' ) ;
+			done() ;
+		} ) ;
+		
+		emitter.emit( 'damage' ) ;
+	} ) ;
+	
+	it( "should work using the listener object syntax" , function( done ) {
+		
+		var emitter = Object.create( NextGenEvents.prototype ) ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , { fn: function() { throw new Error( 'argh!' ) ; } } ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'argh!' ) ;
+			done() ;
+		} ) ;
+		
+		emitter.emit( 'damage' ) ;
+	} ) ;
+	
+	it( "should work using the fn followed by an object syntax" , function( done ) {
+		
+		var emitter = Object.create( NextGenEvents.prototype ) ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , function() { throw new Error( 'argh!' ) ; } , {} ) ;
+		} )
+		.catch( function( error ) {
+			expect( error.message ).to.be( 'argh!' ) ;
+			done() ;
+		} ) ;
+		
+		emitter.emit( 'damage' ) ;
+	} ) ;
+	
+	it( "should work with async listeners" , function( done ) {
+		
+		var emitter = Object.create( NextGenEvents.prototype , function() {
+			console.log( 'Completed?' ) ;
+		} ) ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , {
+				async: true ,
+				fn: function() {
+					setTimeout( function() {
+						throw new Error( 'delayed argh!' ) ;
+					} ) ;
+				}
 			} ) ;
 		} )
 		.catch( function( error ) {
