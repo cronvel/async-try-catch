@@ -219,6 +219,7 @@ describe( "Events" , function() {
 	} ) ;
 	
 	it( "should resume the event emitting" ) ;
+	it( "should isolate listener: a throwing listener should not affect others listeners" ) ;
 } ) ;
 
 
