@@ -224,6 +224,17 @@ describe( "Node Events" , function() {
 		emitter.emit( 'damage' ) ;
 	} ) ;
 	
+	it( "..." , function() {
+		
+		var emitter = Object.create( Events.prototype ) ;
+		var onDamage = function onDamage() { throw new Error( 'argh!' ) ; } ;
+		
+		emitter.on( 'damage' , onDamage ) ;
+		emitter.removeListener( 'damage' , onDamage ) ;
+		
+		emitter.emit( 'damage' ) ;
+	} ) ;
+	
 	//it( "isolate listener? (a throwing listener should not affect others listeners)" ) ;
 } ) ;
 
