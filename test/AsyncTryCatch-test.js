@@ -35,6 +35,12 @@ var asyncTry = AsyncTryCatch.try ;
 var Events = require( 'events' ) ;
 var NextGenEvents = require( 'nextgen-events' ) ;
 
+if ( process.browser )
+{
+	AsyncTryCatch.NodeEvents = Events ;
+	AsyncTryCatch.NextGenEvents = NextGenEvents ;
+}
+
 var expect = require( 'expect.js' ) ;
 
 
@@ -182,7 +188,7 @@ describe( "setTimeout() and friends" , function() {
 
 
 
-describe( "Events" , function() {
+describe( "Node Events" , function() {
 	
 	it( "an exception thrown synchronously from a listener within an async-try closure should be catched" , function( done ) {
 		
@@ -218,8 +224,7 @@ describe( "Events" , function() {
 		emitter.emit( 'damage' ) ;
 	} ) ;
 	
-	it( "should resume the event emitting" ) ;
-	it( "should isolate listener: a throwing listener should not affect others listeners" ) ;
+	//it( "isolate listener? (a throwing listener should not affect others listeners)" ) ;
 } ) ;
 
 

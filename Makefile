@@ -5,13 +5,19 @@
 
 # The first rule is the default rule, when invoking "make" without argument...
 # Build every buildable things
-all: install doc
+all: install doc browser
 
 # Just install things so it works, basicaly: it just performs a "npm install --production" ATM
 install: log/npm-install.log
 
 # Just install things so it works, basicaly: it just performs a "npm install" ATM
 dev-install: log/npm-dev-install.log
+
+# Build
+build: browser
+
+# Build the browser lib
+browser: browser/AsyncTryCatch.js browser/AsyncTryCatch.min.js
 
 # This run the JsHint & Mocha BDD test, display it to STDOUT & save it to log/mocha.log and log/jshint.log
 test: log/jshint.log log/mocha.log
@@ -26,7 +32,7 @@ unit: log/mocha.log
 doc: README.md
 
 # This publish to NPM and push to Github, if we are on master branch only
-publish: check-if-commited README.md build-commit log/npm-publish.log log/github-push.log
+publish: check-if-commited browser README.md build-commit log/npm-publish.log log/github-push.log
 
 # Clean temporary things, or things that can be automatically regenerated
 clean: clean-all
@@ -37,10 +43,20 @@ clean: clean-all
 
 MOCHA=./node_modules/.bin/mocha -c
 JSHINT=./node_modules/.bin/jshint --verbose
+BROWSERIFY=./node_modules/.bin/browserify
+UGLIFY=./node_modules/.bin/uglifyjs
 
 
 
 # Files rules
+
+# Build the browser lib
+browser/AsyncTryCatch.js: lib/*.js
+	${BROWSERIFY} lib/AsyncTryCatch.js -s AsyncTryCatch -o browser/AsyncTryCatch.js
+
+# Build the browser minified lib
+browser/AsyncTryCatch.min.js: browser/AsyncTryCatch.js
+	${UGLIFY} browser/AsyncTryCatch.js -o browser/AsyncTryCatch.min.js -m
 
 # JsHint STDOUT test
 log/jshint.log: log/npm-dev-install.log lib/*.js test/*.js
