@@ -22,6 +22,9 @@ browser: browser/AsyncTryCatch.js browser/AsyncTryCatch.min.js
 # This run the JsHint & Mocha BDD test, display it to STDOUT & save it to log/mocha.log and log/jshint.log
 test: log/jshint.log log/mocha.log
 
+# Build the browser lib
+browser-test: log/tea-time-browser.log
+
 # This run the JsHint, display it to STDOUT & save it to log/jshint.log
 lint: log/jshint.log
 
@@ -65,6 +68,10 @@ log/jshint.log: log/npm-dev-install.log lib/*.js test/*.js
 # Mocha BDD STDOUT test
 log/mocha.log: log/npm-dev-install.log lib/*.js test/*.js
 	${MOCHA} test/*.js -R spec | tee log/mocha.log ; exit $${PIPESTATUS[0]}
+
+# Tea-Time browser test
+log/tea-time-browser.log: log/npm-dev-install.log lib/*.js test/AsyncTryCatch-test.js
+	tea-time test/AsyncTryCatch-test.js --html test/AsyncTryCatch-test.html --browserify --browser firefox | tee log/mocha.log ; exit $${PIPESTATUS[0]}
 
 # README
 README.md: documentation.md
