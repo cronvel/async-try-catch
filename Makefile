@@ -55,7 +55,7 @@ UGLIFY=./node_modules/.bin/uglifyjs
 
 # Build the browser lib
 browser/AsyncTryCatch.js: lib/*.js
-	${BROWSERIFY} lib/AsyncTryCatch.js -s AsyncTryCatch -o browser/AsyncTryCatch.js
+	${BROWSERIFY} lib/AsyncTryCatch.js -i events -i nextgen-events -s AsyncTryCatch -o browser/AsyncTryCatch.js
 
 # Build the browser minified lib
 browser/AsyncTryCatch.min.js: browser/AsyncTryCatch.js
