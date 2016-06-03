@@ -45,10 +45,16 @@ if ( ! process.browser )
 		AsyncTryCatch.NextGenEvents = require( 'nextgen-events' ) ;
 	} catch ( error ) {}
 }
+else
+{
+	if ( ! global.setImmediate )
+	{
+		global.setImmediate = function setImmediate( fn ) { return setTimeout( fn , 0 ) ; } ;
+		global.clearImmediate = function clearImmediate( timer ) { return clearTimeout( timer ) ; } ;
+	}
+}
 
 
-
-// First, backup everything
 if ( ! global.Vanilla )
 {
 	global.Vanilla = {} ;
@@ -56,12 +62,6 @@ if ( ! global.Vanilla )
 	if ( ! global.Vanilla.setTimeout ) { global.Vanilla.setTimeout = setTimeout ; }
 	if ( ! global.Vanilla.setImmediate ) { global.Vanilla.setImmediate = setImmediate ; }
 	if ( ! global.Vanilla.nextTick ) { global.Vanilla.nextTick = process.nextTick ; }
-	
-	if ( AsyncTryCatch.NodeEvents && ! global.Vanilla.nodeEventsOn )
-	{
-		global.Vanilla.nodeEventsOn = AsyncTryCatch.NodeEvents.prototype.on ;
-	}
-	
 	//if ( ! global.Vanilla.Error ) { global.Vanilla.Error = Error ; }
 }
 
@@ -126,82 +126,178 @@ AsyncTryCatch.prototype.callCatchFn = function callCatchFn( error )
 
 
 
-AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod , callbackIndex , callbackKey )
+AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod , listenerIndex , listenerKey )
 {
-	var fn , context ,
+	var fn , context , wrapperFn ,
 		args = Array.prototype.slice.call( arguments , 3 ) ;
 	
-	if ( callbackIndex < 0 ) { callbackIndex = args.length - callbackIndex ; }
+	if ( listenerIndex < 0 ) { listenerIndex = args.length - listenerIndex ; }
 	
-	fn = args[ callbackIndex ] ;
+	fn = args[ listenerIndex ] ;
 	
 	// NextGen event compatibility
-	if ( typeof fn !== 'function' && callbackKey ) { fn = fn[ callbackKey ] ; }
+	if ( typeof fn !== 'function' && listenerKey ) { fn = fn[ listenerKey ] ; }
 	
 	if ( typeof fn !== 'function' || ! AsyncTryCatch.stack.length )
 	{
-		originalMethod.apply( this , args ) ;
-		return ;
+		return originalMethod.apply( this , args ) ;
 	}
 	
 	context = AsyncTryCatch.stack[ AsyncTryCatch.stack.length - 1 ] ;
 	
-	// Replace the the callback by this one:
-	args[ callbackIndex ] = function() {
-		try {
-			AsyncTryCatch.stack.push( context ) ;
-			fn.apply( this , arguments ) ;
-			AsyncTryCatch.stack.pop() ;
+	// This method cover setTimeout(), setImmediate() and process.nextTick()
+	if ( this )
+	{
+		// Assume that the function is only wrapped once per eventEmitter
+		if ( this.__fnToWrapperMap )
+		{
+			wrapperFn = this.__fnToWrapperMap.get( fn ) ;
 		}
-		catch ( error ) {
-			AsyncTryCatch.stack.pop() ;
-			context.callCatchFn( error ) ;
+		else 
+		{
+			// Create the map, make it non-enumerable
+			Object.defineProperty( this , '__fnToWrapperMap', { value: new WeakMap() } ) ;
 		}
-	} ;
+	}
 	
-	originalMethod.apply( this , args ) ;
+	if ( ! wrapperFn )
+	{
+		wrapperFn = function() {
+			try {
+				AsyncTryCatch.stack.push( context ) ;
+				fn.apply( this , arguments ) ;
+				AsyncTryCatch.stack.pop() ;
+			}
+			catch ( error ) {
+				AsyncTryCatch.stack.pop() ;
+				context.callCatchFn( error ) ;
+			}
+		} ;
+		
+		if ( this ) { this.__fnToWrapperMap.set( fn , wrapperFn ) ; }
+	}
+	
+	args[ listenerIndex ] = wrapperFn ;
+	
+	return originalMethod.apply( this , args ) ;
+} ;
+
+
+
+AsyncTryCatch.removeListenerWrapper = function removeListenerWrapper( originalMethod , listenerIndex , listenerKey )
+{
+	var fn , context , wrapperFn ,
+		args = Array.prototype.slice.call( arguments , 3 ) ;
+	
+	if ( listenerIndex < 0 ) { listenerIndex = args.length - listenerIndex ; }
+	
+	fn = args[ listenerIndex ] ;
+	//console.log( 'fn:' , fn ) ;
+	
+	// NextGen event compatibility
+	//if ( typeof fn !== 'function' && listenerKey ) { fn = fn[ listenerKey ] ; }
+	
+	// 'this' is always defined here
+	if ( typeof fn === 'function' && this.__fnToWrapperMap )
+	{
+		args[ listenerIndex ] = this.__fnToWrapperMap.get( fn ) || fn ;
+	}
+	
+	return originalMethod.apply( this , args ) ;
 } ;
 
 
 
 AsyncTryCatch.setTimeout = AsyncTryCatch.addListenerWrapper.bind( undefined , global.Vanilla.setTimeout , 0 , null ) ;
 AsyncTryCatch.setImmediate = AsyncTryCatch.addListenerWrapper.bind( undefined , global.Vanilla.setImmediate , 0 , null ) ;
-AsyncTryCatch.nextTick = AsyncTryCatch.addListenerWrapper.bind( process , global.Vanilla.nextTick , 0 , null ) ;
 
-// NodeEvents addListener() replacement
-AsyncTryCatch.on = function on()
+// DO NOT BIND process as 'this', it is not mandatory for nextTick() to have a 'this' context,
+// and furthermore the lib would assume that we are in a real addListener() use-case
+AsyncTryCatch.nextTick = AsyncTryCatch.addListenerWrapper.bind( undefined , global.Vanilla.nextTick , 0 , null ) ;
+
+// NodeEvents on()/addListener() replacement
+AsyncTryCatch.addListener = function addListener()
 {
-	var args = [ global.Vanilla.nodeEventsOn , 1 , null ].concat( Array.from( arguments ) ) ;
-	AsyncTryCatch.addListenerWrapper.apply( this , [ global.Vanilla.nodeEventsOn , 1 , null ].concat( Array.from( arguments ) ) ) ;
+	AsyncTryCatch.addListenerWrapper.apply( this , [ AsyncTryCatch.NodeEvents.__addListener , 1 , null ].concat( Array.from( arguments ) ) ) ;
 } ;
 
-// NextGen Events addListener() replacement
-AsyncTryCatch.ngevOn = function ngevOn()
+// NodeEvents once() replacement
+AsyncTryCatch.addListenerOnce = function addListenerOnce()
 {
-	AsyncTryCatch.addListenerWrapper.apply( this , [ AsyncTryCatch.NextGenEvents.addListener , 1 , 'fn' ].concat( Array.from( arguments ) ) ) ;
+	AsyncTryCatch.addListenerWrapper.apply( this , [ AsyncTryCatch.NodeEvents.__addListenerOnce , 1 , null ].concat( Array.from( arguments ) ) ) ;
+} ;
+
+// NodeEvents removeListener() replacement
+AsyncTryCatch.removeListener = function removeListener()
+{
+	AsyncTryCatch.removeListenerWrapper.apply( this , [ AsyncTryCatch.NodeEvents.__removeListener , 1 , null ].concat( Array.from( arguments ) ) ) ;
+} ;
+
+// NextGen Events on()/addListener() replacement
+AsyncTryCatch.ngevAddListener = function ngevAddListener()
+{
+	AsyncTryCatch.addListenerWrapper.apply( this , [ AsyncTryCatch.NextGenEvents.on , 1 , 'fn' ].concat( Array.from( arguments ) ) ) ;
+} ;
+
+// NextGen Events once() replacement
+AsyncTryCatch.ngevAddListenerOnce = function ngevAddListenerOnce()
+{
+	AsyncTryCatch.addListenerWrapper.apply( this , [ AsyncTryCatch.NextGenEvents.once , 1 , 'fn' ].concat( Array.from( arguments ) ) ) ;
+} ;
+
+// NextGen Events off()/removeListener() replacement
+AsyncTryCatch.ngevRemoveListener = function ngevRemoveListener()
+{
+	AsyncTryCatch.removeListenerWrapper.apply( this , [ AsyncTryCatch.NextGenEvents.off , 1 , 'fn' ].concat( Array.from( arguments ) ) ) ;
 } ;
 
 
 
 AsyncTryCatch.substitute = function substitute()
 {
-	if ( AsyncTryCatch.substituted ) { return ; }
+	// This test should be done by the caller, because substitution could be incomplete
+	// E.g. browser case: Node Events or NextGen Events are not loaded/accessible at time
+	
+	//if ( AsyncTryCatch.substituted ) { return ; }
 	AsyncTryCatch.substituted = true ;
 	
 	global.setTimeout = AsyncTryCatch.setTimeout ;
 	global.setImmediate = AsyncTryCatch.setTimeout ;
 	process.nextTick = AsyncTryCatch.nextTick ;
 	
-	AsyncTryCatch.NodeEvents.prototype.on = AsyncTryCatch.on ;
-	AsyncTryCatch.NodeEvents.prototype.addListener = AsyncTryCatch.on ;
+	if ( AsyncTryCatch.NodeEvents )
+	{
+		if ( ! AsyncTryCatch.NodeEvents.__addListener )
+		{
+			AsyncTryCatch.NodeEvents.__addListener = AsyncTryCatch.NodeEvents.prototype.on ;
+		}
+		
+		if ( ! AsyncTryCatch.NodeEvents.__addListenerOnce )
+		{
+			AsyncTryCatch.NodeEvents.__addListenerOnce = AsyncTryCatch.NodeEvents.prototype.addListenerOnce ;
+		}
+		
+		if ( ! AsyncTryCatch.NodeEvents.__removeListener )
+		{
+			AsyncTryCatch.NodeEvents.__removeListener = AsyncTryCatch.NodeEvents.prototype.removeListener ;
+		}
+		
+		AsyncTryCatch.NodeEvents.prototype.on = AsyncTryCatch.addListener ;
+		AsyncTryCatch.NodeEvents.prototype.addListener = AsyncTryCatch.addListener ;
+		AsyncTryCatch.NodeEvents.prototype.once = AsyncTryCatch.addListenerOnce ;
+		AsyncTryCatch.NodeEvents.prototype.removeListener = AsyncTryCatch.removeListener ;
+	}
 	
 	//global.Error = AsyncTryCatch.Error ;
 	// Should do that for all error types, cause they will not inherit from the substituted constructor
 	
 	if ( AsyncTryCatch.NextGenEvents )
 	{
-		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.ngevOn ;
-		AsyncTryCatch.NextGenEvents.prototype.addListener = AsyncTryCatch.ngevOn ;
+		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.ngevAddListener ;
+		AsyncTryCatch.NextGenEvents.prototype.addListener = AsyncTryCatch.ngevAddListener ;
+		AsyncTryCatch.NextGenEvents.prototype.once = AsyncTryCatch.ngevAddListenerOnce ;
+		AsyncTryCatch.NextGenEvents.prototype.off = AsyncTryCatch.ngevRemoveListener ;
+		AsyncTryCatch.NextGenEvents.prototype.removeListener = AsyncTryCatch.ngevRemoveListener ;
 	}
 } ;
 
@@ -209,22 +305,44 @@ AsyncTryCatch.substitute = function substitute()
 
 AsyncTryCatch.restore = function restore()
 {
-	if ( ! AsyncTryCatch.substituted ) { return ; }
+	// This test should be done by the caller, because substitution could be incomplete
+	// E.g. browser case: Node Events or NextGen Events are not loaded/accessible at time
+	
+	//if ( ! AsyncTryCatch.substituted ) { return ; }
 	AsyncTryCatch.substituted = false ;
 	
 	global.setTimeout = global.Vanilla.setTimeout ;
 	global.setImmediate = global.Vanilla.setImmediate ;
 	process.nextTick = global.Vanilla.nextTick ;
 	
-	AsyncTryCatch.NodeEvents.prototype.on = global.Vanilla.nodeEventsOn ;
-	AsyncTryCatch.NodeEvents.prototype.addListener = global.Vanilla.nodeEventsOn ;
+	if ( AsyncTryCatch.NodeEvents )
+	{
+		if ( AsyncTryCatch.NodeEvents.__addListener )
+		{
+			AsyncTryCatch.NodeEvents.prototype.on = AsyncTryCatch.NodeEvents.__addListener ;
+			AsyncTryCatch.NodeEvents.prototype.addListener = AsyncTryCatch.NodeEvents.__addListener ;
+		}
+		
+		if ( AsyncTryCatch.NodeEvents.__addListenerOnce )
+		{
+			AsyncTryCatch.NodeEvents.prototype.once = AsyncTryCatch.NodeEvents.__addListenerOnce ;
+		}
+		
+		if ( AsyncTryCatch.NodeEvents.__removeListener )
+		{
+			AsyncTryCatch.NodeEvents.prototype.removeListener = AsyncTryCatch.NodeEvents.__removeListener ;
+		}
+	}
 	
 	//global.Error = global.Vanilla.Error ;
 	
 	if ( AsyncTryCatch.NextGenEvents )
 	{
-		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.NextGenEvents.addListener ;
-		AsyncTryCatch.NextGenEvents.prototype.addListener = AsyncTryCatch.NextGenEvents.addListener ;
+		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.NextGenEvents.on ;
+		AsyncTryCatch.NextGenEvents.prototype.addListener = AsyncTryCatch.NextGenEvents.on ;
+		AsyncTryCatch.NextGenEvents.prototype.once = AsyncTryCatch.NextGenEvents.once ;
+		AsyncTryCatch.NextGenEvents.prototype.off = AsyncTryCatch.NextGenEvents.off ;
+		AsyncTryCatch.NextGenEvents.prototype.removeListener = AsyncTryCatch.NextGenEvents.removeListener ;
 	}
 } ;
 
@@ -771,30 +889,18 @@ NextGenEvents.prototype.addListener = function addListener( eventName , fn , opt
 	return this ;
 } ;
 
-
-
-// NextGenEvents.addListener() is a backup, since the AsyncTryCatch module may overwrite both prototyped method
-NextGenEvents.addListener = NextGenEvents.prototype.on = NextGenEvents.prototype.addListener ;
+NextGenEvents.prototype.on = NextGenEvents.prototype.addListener ;
 
 
 
 // Shortcut
-NextGenEvents.prototype.once = function once( eventName , options )
+NextGenEvents.prototype.once = function once( eventName , fn , options )
 {
-	if ( ! eventName || typeof eventName !== 'string' ) { throw new TypeError( ".once(): argument #0 should be a non-empty string" ) ; }
+	if ( fn && typeof fn === 'object' ) { fn.once = true ; }
+	else if ( options && typeof options === 'object' ) { options.once = true ; }
+	else { options = { once: true } ; }
 	
-	if ( typeof options === 'function' )
-	{
-		options = { id: options , fn: options } ;
-	}
-	else if ( ! options || typeof options !== 'object' || typeof options.fn !== 'function' )
-	{
-		throw new TypeError( ".once(): argument #1 should be a function or an object with a 'fn' property which value is a function" ) ;
-	}
-	
-	options.once = true ;
-	
-	return this.addListener( eventName , options ) ;
+	return this.addListener( eventName , fn , options ) ;
 } ;
 
 
@@ -832,8 +938,6 @@ NextGenEvents.prototype.removeListener = function removeListener( eventName , id
 	
 	return this ;
 } ;
-
-
 
 NextGenEvents.prototype.off = NextGenEvents.prototype.removeListener ;
 
@@ -1371,6 +1475,12 @@ NextGenEvents.processQueue = function processQueue( contextName , isCompletionCa
 	this.__ngev.recursion -- ;
 } ;
 
+
+
+// Backup for the AsyncTryCatch
+NextGenEvents.on = NextGenEvents.prototype.on ;
+NextGenEvents.once = NextGenEvents.prototype.once ;
+NextGenEvents.off = NextGenEvents.prototype.off ;
 
 
 

@@ -224,15 +224,36 @@ describe( "Node Events" , function() {
 		emitter.emit( 'damage' ) ;
 	} ) ;
 	
-	it( "..." , function() {
+	it( "once() should works as expected" , function() {
 		
 		var emitter = Object.create( Events.prototype ) ;
 		var onDamage = function onDamage() { throw new Error( 'argh!' ) ; } ;
 		
-		emitter.on( 'damage' , onDamage ) ;
-		emitter.removeListener( 'damage' , onDamage ) ;
+		var count = 0 ;
 		
-		emitter.emit( 'damage' ) ;
+		asyncTry( function() {
+			emitter.once( 'damage' , onDamage ) ;
+			emitter.emit( 'damage' ) ;
+			emitter.emit( 'damage' ) ;
+		} )
+		.catch( function( error ) {
+			if ( count ++ ) { throw error ; }
+		} ) ;
+	} ) ;
+	
+	it( "removeListener() should works as expected" , function() {
+		
+		var emitter = Object.create( Events.prototype ) ;
+		var onDamage = function onDamage() { throw new Error( 'argh!' ) ; } ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , onDamage ) ;
+			emitter.removeListener( 'damage' , onDamage ) ;
+			emitter.emit( 'damage' ) ;
+		} )
+		.catch( function( error ) {
+			throw error ;
+		} ) ;
 	} ) ;
 	
 	//it( "isolate listener? (a throwing listener should not affect others listeners)" ) ;
@@ -328,6 +349,38 @@ describe( "NextGen Events" , function() {
 		} ) ;
 		
 		emitter.emit( 'damage' ) ;
+	} ) ;
+	
+	it( "once() should works as expected" , function() {
+		
+		var emitter = Object.create( NextGenEvents.prototype ) ;
+		var onDamage = function onDamage() { throw new Error( 'argh!' ) ; } ;
+		
+		var count = 0 ;
+		
+		asyncTry( function() {
+			emitter.once( 'damage' , onDamage ) ;
+			emitter.emit( 'damage' ) ;
+			emitter.emit( 'damage' ) ;
+		} )
+		.catch( function( error ) {
+			if ( count ++ ) { throw error ; }
+		} ) ;
+	} ) ;
+	
+	it( "removeListener() should works as expected" , function() {
+		
+		var emitter = Object.create( NextGenEvents.prototype ) ;
+		var onDamage = function onDamage() { throw new Error( 'argh!' ) ; } ;
+		
+		asyncTry( function() {
+			emitter.on( 'damage' , onDamage ) ;
+			emitter.removeListener( 'damage' , onDamage ) ;
+			emitter.emit( 'damage' ) ;
+		} )
+		.catch( function( error ) {
+			throw error ;
+		} ) ;
 	} ) ;
 } ) ;
 
