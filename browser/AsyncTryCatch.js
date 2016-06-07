@@ -227,7 +227,13 @@ AsyncTryCatch.addListener = function addListener( eventName , fn )
 // NodeEvents once() replacement
 AsyncTryCatch.addListenerOnce = function addListenerOnce( eventName , fn )
 {
+	try {
 	AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NodeEvents.__addListenerOnce , eventName , fn ) ;
+	} catch ( error ) {
+		console.log( AsyncTryCatch.NodeEvents ) ;
+		console.log( AsyncTryCatch.NodeEvents.__addListenerOnce ) ;
+		throw error ;
+	}
 } ;
 
 // NodeEvents removeListener() replacement
@@ -268,7 +274,7 @@ AsyncTryCatch.substitute = function substitute()
 	global.setImmediate = AsyncTryCatch.setTimeout ;
 	process.nextTick = AsyncTryCatch.nextTick ;
 	
-	// Global is checked first, in case we are running into browsers
+	// Global is checked first, in case we are running inside a browser
 	try {
 		AsyncTryCatch.NodeEvents = global.EventEmitter || require( 'events' ) ;
 	} catch ( error ) {}
@@ -286,7 +292,7 @@ AsyncTryCatch.substitute = function substitute()
 		
 		if ( ! AsyncTryCatch.NodeEvents.__addListenerOnce )
 		{
-			AsyncTryCatch.NodeEvents.__addListenerOnce = AsyncTryCatch.NodeEvents.prototype.addListenerOnce ;
+			AsyncTryCatch.NodeEvents.__addListenerOnce = AsyncTryCatch.NodeEvents.prototype.once ;
 		}
 		
 		if ( ! AsyncTryCatch.NodeEvents.__removeListener )
