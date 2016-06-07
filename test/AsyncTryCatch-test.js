@@ -55,26 +55,26 @@ describe( "Synchronous" , function() {
 	
 	it( "Sync" , function() {
 		
-		asyncTry( function() {
+		asyncTry( function syncTry() {
 			throw new Error( 'sync error' ) ;
 		} )
-		.catch( function( error ) {
+		.catch( function syncCatch( error ) {
 			expect( error.message ).to.be( 'sync error' ) ;
 		} ) ;
 	} ) ;
 	
 	it( "Sync, nested" , function() {
 		
-		asyncTry( function() {
-			asyncTry( function() {
+		asyncTry( function syncNestedOuterTry() {
+			asyncTry( function syncNestedInnerTry() {
 				throw new Error( 'inner sync error' ) ;
 			} )
-			.catch( function( error ) {
+			.catch( function syncNestedInnerCatch( error ) {
 				expect( error.message ).to.be( 'inner sync error' ) ;
 				throw new Error( 're-throw sync error' ) ;
 			} ) ;
 		} )
-		.catch( function( error ) {
+		.catch( function syncNestedOuterCatch( error ) {
 			expect( error.message ).to.be( 're-throw sync error' ) ;
 		} ) ;
 	} ) ;
@@ -86,12 +86,12 @@ describe( "setTimeout() and friends" , function() {
 	
 	it( "setTimeout()" , function( done ) {
 		
-		asyncTry( function() {
-			setTimeout( function() {
+		asyncTry( function setTimeoutTry() {
+			setTimeout( function setTimeoutTimeout() {
 				throw new Error( 'setTimeout error' ) ;
 			} , 0 ) ;
 		} )
-		.catch( function( error ) {
+		.catch( function setTimeoutCatch( error ) {
 			expect( error.message ).to.be( 'setTimeout error' ) ;
 			done() ;
 		} ) ;

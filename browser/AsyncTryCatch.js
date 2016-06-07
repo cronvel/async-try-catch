@@ -32,7 +32,45 @@
 
 function AsyncTryCatch() { throw new Error( "Use AsyncTryCatch.try() instead." ) ; }
 module.exports = AsyncTryCatch ;
-global.AsyncTryCatch = AsyncTryCatch ;
+AsyncTryCatch.prototype.__prototypeUID__ = 'async-try-catch/AsyncTryCatch' ;
+AsyncTryCatch.prototype.__prototypeVersion__ = require( '../package.json' ).version ;
+
+
+
+if ( global.AsyncTryCatch )
+{
+	if ( global.AsyncTryCatch.prototype.__prototypeUID__ === 'async-try-catch/AsyncTryCatch' )
+	{
+		//console.log( "Already installed:" , global.AsyncTryCatch.prototype.__prototypeVersion__ , "current:" , AsyncTryCatch.prototype.__prototypeVersion__ ) ;
+		
+		var currentVersions = AsyncTryCatch.prototype.__prototypeVersion__.split( '.' ) ;
+		var installedVersions = global.AsyncTryCatch.prototype.__prototypeVersion__.split( '.' ) ;
+		
+		// Basic semver comparison
+		if (
+			installedVersions[ 0 ] !== currentVersions[ 0 ] ||
+			( currentVersions[ 0 ] === "0" && installedVersions[ 1 ] !== currentVersions[ 1 ] )
+		)
+		{
+			throw new Error(
+				"Incompatible version of AsyncTryCatch already installed on global.AsyncTryCatch: " +
+				global.AsyncTryCatch.prototype.__prototypeVersion__ +
+				", current version: " + AsyncTryCatch.prototype.__prototypeVersion__
+			) ;
+		}
+		//global.AsyncTryCatch = AsyncTryCatch ;
+	}
+	else
+	{
+		throw new Error( "Incompatible module already installed on global.AsyncTryCatch" ) ;
+	}
+}
+else
+{
+	global.AsyncTryCatch = AsyncTryCatch ;
+	global.AsyncTryCatch.stack = [] ;
+	global.AsyncTryCatch.substituted = false ;
+}
 
 
 
@@ -44,18 +82,10 @@ if ( process.browser && ! global.setImmediate )
 
 
 
-if ( ! global.Vanilla )
-{
-	global.Vanilla = {} ;
-	
-	if ( ! global.Vanilla.setTimeout ) { global.Vanilla.setTimeout = setTimeout ; }
-	if ( ! global.Vanilla.setImmediate ) { global.Vanilla.setImmediate = setImmediate ; }
-	if ( ! global.Vanilla.nextTick ) { global.Vanilla.nextTick = process.nextTick ; }
-	//if ( ! global.Vanilla.Error ) { global.Vanilla.Error = Error ; }
-}
-
-AsyncTryCatch.stack = [] ;
-AsyncTryCatch.substituted = false ;
+if ( ! global.Vanilla ) { global.Vanilla = {} ; }
+if ( ! global.Vanilla.setTimeout ) { global.Vanilla.setTimeout = setTimeout ; }
+if ( ! global.Vanilla.setImmediate ) { global.Vanilla.setImmediate = setImmediate ; }
+if ( ! global.Vanilla.nextTick ) { global.Vanilla.nextTick = process.nextTick ; }
 
 
 
@@ -63,7 +93,7 @@ AsyncTryCatch.try = function try_( fn )
 {
 	var self = Object.create( AsyncTryCatch.prototype , {
 		fn: { value: fn , enumerable: true } ,
-		parent: { value: AsyncTryCatch.stack[ AsyncTryCatch.stack.length - 1 ] }
+		parent: { value: global.AsyncTryCatch.stack[ global.AsyncTryCatch.stack.length - 1 ] }
 	} ) ;
 	
 	return self ;
@@ -77,15 +107,15 @@ AsyncTryCatch.prototype.catch = function catch_( catchFn )
 		catchFn: { value: catchFn , enumerable: true }
 	} ) ;
 	
-	if ( ! AsyncTryCatch.substituted ) { AsyncTryCatch.substitute() ; }
+	if ( ! global.AsyncTryCatch.substituted ) { AsyncTryCatch.substitute() ; }
 	
 	try {
-		AsyncTryCatch.stack.push( this ) ;
+		global.AsyncTryCatch.stack.push( this ) ;
 		this.fn() ;
-		AsyncTryCatch.stack.pop() ;
+		global.AsyncTryCatch.stack.pop() ;
 	}
 	catch ( error ) {
-		AsyncTryCatch.stack.pop() ;
+		global.AsyncTryCatch.stack.pop() ;
 		this.callCatchFn( error ) ;
 	}
 	
@@ -103,12 +133,12 @@ AsyncTryCatch.prototype.callCatchFn = function callCatchFn( error )
 	}
 	
 	try {
-		AsyncTryCatch.stack.push( this.parent ) ;
+		global.AsyncTryCatch.stack.push( this.parent ) ;
 		this.catchFn( error ) ;
-		AsyncTryCatch.stack.pop() ;
+		global.AsyncTryCatch.stack.pop() ;
 	}
 	catch ( error ) {
-		AsyncTryCatch.stack.pop() ;
+		global.AsyncTryCatch.stack.pop() ;
 		this.parent.callCatchFn( error ) ;
 	}
 } ;
@@ -121,21 +151,21 @@ AsyncTryCatch.timerWrapper = function timerWrapper( originalMethod , fn )
 	var fn , context , wrapperFn ,
 		args = Array.prototype.slice.call( arguments , 1 ) ;
 	
-	if ( typeof fn !== 'function' || ! AsyncTryCatch.stack.length )
+	if ( typeof fn !== 'function' || ! global.AsyncTryCatch.stack.length )
 	{
 		return originalMethod.apply( this , args ) ;
 	}
 	
-	context = AsyncTryCatch.stack[ AsyncTryCatch.stack.length - 1 ] ;
+	context = global.AsyncTryCatch.stack[ global.AsyncTryCatch.stack.length - 1 ] ;
 	
 	wrapperFn = function() {
 		try {
-			AsyncTryCatch.stack.push( context ) ;
+			global.AsyncTryCatch.stack.push( context ) ;
 			fn.apply( this , arguments ) ;
-			AsyncTryCatch.stack.pop() ;
+			global.AsyncTryCatch.stack.pop() ;
 		}
 		catch ( error ) {
-			AsyncTryCatch.stack.pop() ;
+			global.AsyncTryCatch.stack.pop() ;
 			context.callCatchFn( error ) ;
 		}
 	} ;
@@ -160,12 +190,12 @@ AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod ,
 		delete options.fn ;
 	}
 	
-	if ( typeof fn !== 'function' || ! AsyncTryCatch.stack.length )
+	if ( typeof fn !== 'function' || ! global.AsyncTryCatch.stack.length )
 	{
 		return originalMethod.call( this , eventName , fn , options ) ;
 	}
 	
-	context = AsyncTryCatch.stack[ AsyncTryCatch.stack.length - 1 ] ;
+	context = global.AsyncTryCatch.stack[ global.AsyncTryCatch.stack.length - 1 ] ;
 	
 	// Assume that the function is only wrapped once per eventEmitter
 	if ( this.__fnToWrapperMap )
@@ -182,12 +212,12 @@ AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod ,
 	{
 		wrapperFn = function() {
 			try {
-				AsyncTryCatch.stack.push( context ) ;
+				global.AsyncTryCatch.stack.push( context ) ;
 				fn.apply( this , arguments ) ;
-				AsyncTryCatch.stack.pop() ;
+				global.AsyncTryCatch.stack.pop() ;
 			}
 			catch ( error ) {
-				AsyncTryCatch.stack.pop() ;
+				global.AsyncTryCatch.stack.pop() ;
 				context.callCatchFn( error ) ;
 			}
 		} ;
@@ -227,13 +257,7 @@ AsyncTryCatch.addListener = function addListener( eventName , fn )
 // NodeEvents once() replacement
 AsyncTryCatch.addListenerOnce = function addListenerOnce( eventName , fn )
 {
-	try {
 	AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NodeEvents.__addListenerOnce , eventName , fn ) ;
-	} catch ( error ) {
-		console.log( AsyncTryCatch.NodeEvents ) ;
-		console.log( AsyncTryCatch.NodeEvents.__addListenerOnce ) ;
-		throw error ;
-	}
 } ;
 
 // NodeEvents removeListener() replacement
@@ -267,8 +291,8 @@ AsyncTryCatch.substitute = function substitute()
 	// This test should be done by the caller, because substitution could be incomplete
 	// E.g. browser case: Node Events or NextGen Events are not loaded/accessible at time
 	
-	//if ( AsyncTryCatch.substituted ) { return ; }
-	AsyncTryCatch.substituted = true ;
+	//if ( global.AsyncTryCatch.substituted ) { return ; }
+	global.AsyncTryCatch.substituted = true ;
 	
 	global.setTimeout = AsyncTryCatch.setTimeout ;
 	global.setImmediate = AsyncTryCatch.setTimeout ;
@@ -306,9 +330,6 @@ AsyncTryCatch.substitute = function substitute()
 		AsyncTryCatch.NodeEvents.prototype.removeListener = AsyncTryCatch.removeListener ;
 	}
 	
-	//global.Error = AsyncTryCatch.Error ;
-	// Should do that for all error types, cause they will not inherit from the substituted constructor
-	
 	if ( AsyncTryCatch.NextGenEvents )
 	{
 		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.ngevAddListener ;
@@ -326,8 +347,8 @@ AsyncTryCatch.restore = function restore()
 	// This test should be done by the caller, because substitution could be incomplete
 	// E.g. browser case: Node Events or NextGen Events are not loaded/accessible at time
 	
-	//if ( ! AsyncTryCatch.substituted ) { return ; }
-	AsyncTryCatch.substituted = false ;
+	//if ( ! global.AsyncTryCatch.substituted ) { return ; }
+	global.AsyncTryCatch.substituted = false ;
 	
 	global.setTimeout = global.Vanilla.setTimeout ;
 	global.setImmediate = global.Vanilla.setImmediate ;
@@ -341,8 +362,6 @@ AsyncTryCatch.restore = function restore()
 		AsyncTryCatch.NodeEvents.prototype.removeListener = AsyncTryCatch.NodeEvents.__removeListener ;
 	}
 	
-	//global.Error = global.Vanilla.Error ;
-	
 	if ( AsyncTryCatch.NextGenEvents )
 	{
 		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.NextGenEvents.on ;
@@ -355,27 +374,8 @@ AsyncTryCatch.restore = function restore()
 
 
 
-/*
-AsyncTryCatch.Error = function Error( message )
-{
-	global.Vanilla.Error.call( this ) ;
-	global.Vanilla.Error.captureStackTrace && global.Vanilla.Error.captureStackTrace( this , this.constructor ) ; // jshint ignore:line
-	
-	Object.defineProperties( this , {
-		message: { value: message , writable: true } ,
-		id: { value: '' + Math.floor( Math.random( 1000000 ) ) }
-	} ) ;
-} ;
-
-AsyncTryCatch.Error.prototype = Object.create( global.Vanilla.Error.prototype ) ;
-AsyncTryCatch.Error.prototype.constructor = AsyncTryCatch.Error ;
-*/
-
-
-
-
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":3,"events":2,"nextgen-events":2}],2:[function(require,module,exports){
+},{"../package.json":4,"_process":3,"events":2,"nextgen-events":2}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 // shim for using process in browser
@@ -473,5 +473,49 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
+},{}],4:[function(require,module,exports){
+module.exports={
+  "name": "async-try-catch",
+  "version": "0.1.7",
+  "description": "Async try catch",
+  "main": "lib/AsyncTryCatch.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "browserify": "^13.0.1",
+    "expect.js": "^0.3.1",
+    "jshint": "^2.9.2",
+    "mocha": "^2.5.3",
+    "nextgen-events": "^0.5.16",
+    "uglify-js": "^2.6.2"
+  },
+  "scripts": {
+    "test": "mocha -R dot"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cronvel/async-try-catch.git"
+  },
+  "keywords": [
+    "async",
+    "try",
+    "catch"
+  ],
+  "author": "Cédric Ronvel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cronvel/async-try-catch/issues"
+  },
+  "copyright": {
+    "title": "Async Try-Catch",
+    "years": [
+      2015,
+      2016
+    ],
+    "owner": "Cédric Ronvel"
+  }
+}
 },{}]},{},[1])(1)
 });
