@@ -54,7 +54,7 @@ UGLIFY=./node_modules/.bin/uglifyjs
 # Files rules
 
 # Build the browser lib
-browser/AsyncTryCatch.js: lib/*.js
+browser/AsyncTryCatch.js: lib/*.js package.json
 	${BROWSERIFY} lib/AsyncTryCatch.js -i events -i nextgen-events -s AsyncTryCatch -o browser/AsyncTryCatch.js
 
 # Build the browser minified lib

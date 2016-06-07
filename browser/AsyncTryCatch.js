@@ -476,7 +476,7 @@ process.umask = function() { return 0; };
 },{}],4:[function(require,module,exports){
 module.exports={
   "name": "async-try-catch",
-  "version": "0.1.7",
+  "version": "0.2.1",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {
