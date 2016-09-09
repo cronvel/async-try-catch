@@ -268,6 +268,7 @@ describe( "NextGen Events" , function() {
 		var emitter = Object.create( NextGenEvents.prototype ) ;
 		
 		asyncTry( function() {
+			//emitter.on( 'damage' , function() { console.log( 'Damage event!' ) ; throw new Error( 'argh!' ) ; } ) ;
 			emitter.on( 'damage' , function() { throw new Error( 'argh!' ) ; } ) ;
 		} )
 		.catch( function( error ) {

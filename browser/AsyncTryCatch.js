@@ -70,6 +70,7 @@ else
 	global.AsyncTryCatch = AsyncTryCatch ;
 	global.AsyncTryCatch.stack = [] ;
 	global.AsyncTryCatch.substituted = false ;
+	global.AsyncTryCatch.NextGenEvents = [] ;
 }
 
 
@@ -269,19 +270,30 @@ AsyncTryCatch.removeListener = function removeListener( eventName , fn )
 // NextGen Events on()/addListener() replacement
 AsyncTryCatch.ngevAddListener = function ngevAddListener( eventName , fn , options )
 {
-	AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NextGenEvents.on , eventName , fn , options ) ;
+	/*
+	console.log( 'this:' , this ) ;
+	console.log( 'this.asyncTryCatchId:' , this.asyncTryCatchId ) ;
+	console.log( 'called with:' , Array.from( arguments ) ) ;
+	try {*/
+	AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NextGenEvents[ this.asyncTryCatchId ].on , eventName , fn , options ) ;
+	/*}
+	catch ( error ) {
+		console.error( error ) ;
+		console.log( index ) ;
+		throw error ;
+	}*/
 } ;
 
 // NextGen Events once() replacement
 AsyncTryCatch.ngevAddListenerOnce = function ngevAddListenerOnce( eventName , fn , options )
 {
-	AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NextGenEvents.once , eventName , fn , options ) ;
+	AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NextGenEvents[ this.asyncTryCatchId ].once , eventName , fn , options ) ;
 } ;
 
 // NextGen Events off()/removeListener() replacement
 AsyncTryCatch.ngevRemoveListener = function ngevRemoveListener( eventName , fn )
 {
-	AsyncTryCatch.removeListenerWrapper.call( this , AsyncTryCatch.NextGenEvents.off , eventName , fn ) ;
+	AsyncTryCatch.removeListenerWrapper.call( this , AsyncTryCatch.NextGenEvents[ this.asyncTryCatchId ].off , eventName , fn ) ;
 } ;
 
 
@@ -290,8 +302,8 @@ AsyncTryCatch.substitute = function substitute()
 {
 	// This test should be done by the caller, because substitution could be incomplete
 	// E.g. browser case: Node Events or NextGen Events are not loaded/accessible at time
-	
 	//if ( global.AsyncTryCatch.substituted ) { return ; }
+	
 	global.AsyncTryCatch.substituted = true ;
 	
 	global.setTimeout = AsyncTryCatch.setTimeout ;
@@ -303,9 +315,11 @@ AsyncTryCatch.substitute = function substitute()
 		AsyncTryCatch.NodeEvents = global.EventEmitter || require( 'events' ) ;
 	} catch ( error ) {}
 	
+	/*
 	try {
 		AsyncTryCatch.NextGenEvents = global.NextGenEvents || require( 'nextgen-events' ) ;
 	} catch ( error ) {}
+	*/
 	
 	if ( AsyncTryCatch.NodeEvents )
 	{
@@ -330,6 +344,17 @@ AsyncTryCatch.substitute = function substitute()
 		AsyncTryCatch.NodeEvents.prototype.removeListener = AsyncTryCatch.removeListener ;
 	}
 	
+	for ( var i = 0 ; i < AsyncTryCatch.NextGenEvents.length ; i ++ )
+	{
+		//console.log( 'substituting NextGenEvents' , i ) ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.on = AsyncTryCatch.ngevAddListener ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.addListener = AsyncTryCatch.ngevAddListener ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.once = AsyncTryCatch.ngevAddListenerOnce ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.off = AsyncTryCatch.ngevRemoveListener ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.removeListener = AsyncTryCatch.ngevRemoveListener ;
+	}
+	
+	/*
 	if ( AsyncTryCatch.NextGenEvents )
 	{
 		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.ngevAddListener ;
@@ -338,6 +363,7 @@ AsyncTryCatch.substitute = function substitute()
 		AsyncTryCatch.NextGenEvents.prototype.off = AsyncTryCatch.ngevRemoveListener ;
 		AsyncTryCatch.NextGenEvents.prototype.removeListener = AsyncTryCatch.ngevRemoveListener ;
 	}
+	*/
 } ;
 
 
@@ -346,8 +372,8 @@ AsyncTryCatch.restore = function restore()
 {
 	// This test should be done by the caller, because substitution could be incomplete
 	// E.g. browser case: Node Events or NextGen Events are not loaded/accessible at time
-	
 	//if ( ! global.AsyncTryCatch.substituted ) { return ; }
+	
 	global.AsyncTryCatch.substituted = false ;
 	
 	global.setTimeout = global.Vanilla.setTimeout ;
@@ -362,6 +388,16 @@ AsyncTryCatch.restore = function restore()
 		AsyncTryCatch.NodeEvents.prototype.removeListener = AsyncTryCatch.NodeEvents.__removeListener ;
 	}
 	
+	for ( var i = 0 ; i < AsyncTryCatch.NextGenEvents.length ; i ++ )
+	{
+		AsyncTryCatch.NextGenEvents[ i ].prototype.on = AsyncTryCatch.NextGenEvents[ i ].on ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.addListener = AsyncTryCatch.NextGenEvents[ i ].on ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.once = AsyncTryCatch.NextGenEvents[ i ].once ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.off = AsyncTryCatch.NextGenEvents[ i ].off ;
+		AsyncTryCatch.NextGenEvents[ i ].prototype.removeListener = AsyncTryCatch.NextGenEvents[ i ].removeListener ;
+	}
+	
+	/*
 	if ( AsyncTryCatch.NextGenEvents )
 	{
 		AsyncTryCatch.NextGenEvents.prototype.on = AsyncTryCatch.NextGenEvents.on ;
@@ -370,12 +406,13 @@ AsyncTryCatch.restore = function restore()
 		AsyncTryCatch.NextGenEvents.prototype.off = AsyncTryCatch.NextGenEvents.off ;
 		AsyncTryCatch.NextGenEvents.prototype.removeListener = AsyncTryCatch.NextGenEvents.removeListener ;
 	}
+	*/
 } ;
 
 
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../package.json":4,"_process":3,"events":2,"nextgen-events":2}],2:[function(require,module,exports){
+},{"../package.json":4,"_process":3,"events":2}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 // shim for using process in browser
@@ -476,7 +513,7 @@ process.umask = function() { return 0; };
 },{}],4:[function(require,module,exports){
 module.exports={
   "name": "async-try-catch",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {
@@ -488,7 +525,7 @@ module.exports={
     "expect.js": "^0.3.1",
     "jshint": "^2.9.2",
     "mocha": "^2.5.3",
-    "nextgen-events": "^0.5.16",
+    "nextgen-events": "^0.9.5",
     "uglify-js": "^2.6.2"
   },
   "scripts": {
