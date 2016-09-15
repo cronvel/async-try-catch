@@ -158,7 +158,7 @@ AsyncTryCatch.timerWrapper = function timerWrapper( originalMethod , fn )
 	
 	context = global.AsyncTryCatch.stack[ global.AsyncTryCatch.stack.length - 1 ] ;
 	
-	wrapperFn = function() {
+	wrapperFn = function timerWrapperFn() {
 		try {
 			global.AsyncTryCatch.stack.push( context ) ;
 			return fn.apply( this , arguments ) ;
@@ -178,9 +178,9 @@ AsyncTryCatch.timerWrapper = function timerWrapper( originalMethod , fn )
 
 
 // for Node-EventEmitter-compatible .addListener()
-AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod , eventName , fn , options )
+AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod , eventName , fn , options , onceWrapper )
 {
-	var fn , context , wrapperFn ;
+	var fn , context , wrapperFn , onceWrapperFired ;
 	
 	// NextGen event compatibility
 	if ( typeof fn === 'object' )
@@ -197,20 +197,15 @@ AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod ,
 	
 	context = global.AsyncTryCatch.stack[ global.AsyncTryCatch.stack.length - 1 ] ;
 	
-	// Make sure that the function is only wrapped once per eventEmitter
-	if ( this.__fnToWrapperMap )
+	if ( onceWrapper )
 	{
-		wrapperFn = this.__fnToWrapperMap.get( fn ) ;
-	}
-	else 
-	{
-		// Create the map, make it non-enumerable
-		Object.defineProperty( this , '__fnToWrapperMap', { value: new WeakMap() } ) ;
-	}
-	
-	if ( ! wrapperFn )
-	{
-		wrapperFn = function() {
+		onceWrapperFired = false ;
+		
+		wrapperFn = function listenerOnceWrapperFn() {
+			if ( onceWrapperFired ) { return ; }
+			onceWrapperFired = true ;
+			this.removeListener( eventName , wrapperFn ) ;
+			
 			try {
 				global.AsyncTryCatch.stack.push( context ) ;
 				return fn.apply( this , arguments ) ;
@@ -221,22 +216,28 @@ AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod ,
 				context.callCatchFn( error ) ;
 			}
 		} ;
-		
-		this.__fnToWrapperMap.set( fn , wrapperFn ) ;
 	}
+	else
+	{
+		wrapperFn = function listenerWrapperFn() {
+			try {
+				global.AsyncTryCatch.stack.push( context ) ;
+				return fn.apply( this , arguments ) ;
+				global.AsyncTryCatch.stack.pop() ;
+			}
+			catch ( error ) {
+				global.AsyncTryCatch.stack.pop() ;
+				context.callCatchFn( error ) ;
+			}
+		} ;
+	}
+	
+	// This is used to indicate to node.js core events that this function is a wrapper to another.
+	// E.g. it is used internally by .removeListener() to find the registered wrapper from the original userland listener.
+	wrapperFn.listener = fn ;
 	
 	return originalMethod.call( this , eventName , wrapperFn , options ) ;
 } ;
-
-
-
-/*
-// Not useful anymore
-AsyncTryCatch.removeListenerWrapper = function removeListenerWrapper( originalMethod , eventName , fnOrId )
-{
-	return originalMethod.call( this , eventName , fnOrId ) ;
-} ;
-*/
 
 
 
@@ -253,18 +254,12 @@ AsyncTryCatch.addListener = function addListener( eventName , fn )
 // NodeEvents once() replacement
 AsyncTryCatch.addListenerOnce = function addListenerOnce( eventName , fn )
 {
-	return AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NodeEvents.__addListenerOnce , eventName , fn ) ;
+	return AsyncTryCatch.addListenerWrapper.call( this , AsyncTryCatch.NodeEvents.__addListener , eventName , fn , undefined , true ) ;
 } ;
 
 // NodeEvents removeListener() replacement
 AsyncTryCatch.removeListener = function removeListener( eventName , fn )
 {
-	if ( typeof fn === 'function' && this.__fnToWrapperMap )
-	{
-		fn = this.__fnToWrapperMap.get( fn ) || fn ;
-	}
-	
-	//return AsyncTryCatch.removeListenerWrapper.call( this , AsyncTryCatch.NodeEvents.__removeListener , eventName , fn ) ;
 	return AsyncTryCatch.NodeEvents.__removeListener.call( this , eventName , fn ) ;
 } ;
 
@@ -293,7 +288,6 @@ AsyncTryCatch.ngevAddListenerOnce = function ngevAddListenerOnce( eventName , fn
 // NextGen Events off()/removeListener() replacement
 AsyncTryCatch.ngevRemoveListener = function ngevRemoveListener( eventName , id )
 {
-	//return AsyncTryCatch.removeListenerWrapper.call( this , AsyncTryCatch.NextGenEvents[ this.asyncTryCatchId ].off , eventName , id ) ;
 	return AsyncTryCatch.NextGenEvents[ this.asyncTryCatchId ].off.call( this , eventName , id ) ;
 } ;
 
@@ -572,7 +566,7 @@ process.umask = function() { return 0; };
 },{}],4:[function(require,module,exports){
 module.exports={
   "name": "async-try-catch",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {
