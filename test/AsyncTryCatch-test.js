@@ -383,35 +383,12 @@ describe( "NextGen Events" , function() {
 			throw error ;
 		} ) ;
 	} ) ;
-	
-	it( "historical bug: interruption should works using async emitting" , function( done ) {
-        
-        var bus = Object.create( NextGenEvents.prototype ) ;
-        bus.setInterruptible( true ) ;
-        
-        var onFoo1 , onFoo2 , onFoo3 , onInterrupt1 , onInterrupt2 ;
-        var triggered = { foo1: 0 , foo2: 0 , foo3: 0 , interrupt1: 0 , interrupt2: 0 } ;
-        
-        // 3 listeners for 'foo'
-        bus.on( 'foo' , onFoo1 = function() { triggered.foo1 ++ ; return { want: 'interruption' } ; } ) ;
-        bus.on( 'foo' , onFoo2 = function() { triggered.foo2 ++ ; } ) ;
-        bus.on( 'foo' , onFoo3 = function() { triggered.foo3 ++ ; } ) ;
-        
-        bus.on( 'interrupt' , onInterrupt1 = function( object ) {
-            triggered.interrupt1 ++ ;
-            expect( object ).to.eql( { want: 'interruption' } ) ;
-        } ) ;
-        
-        bus.on( 'interrupt' , onInterrupt2 = function( object ) {
-            triggered.interrupt2 ++ ;
-            //console.error( ">>> object: " , object ) ;
-            expect( object ).to.eql( { want: 'interruption' } ) ;
-            expect( triggered ).to.eql( { foo1: 1 , foo2: 0 , foo3: 0 , interrupt1: 1 , interrupt2: 1 } ) ;
-            done() ;
-        } ) ;
-        
-        bus.emit( 20 , 'foo' ) ;
-    } ) ;
 } ) ;
 
+
+
+describe( "Full NextGen Events test suite execution" , function() {
+	require( 'nextgen-events/test/NextGenEvents-test.js' ) ;
+} ) ;
+	
 
