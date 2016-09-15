@@ -1,6 +1,6 @@
 {
   "name": "async-try-catch",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {

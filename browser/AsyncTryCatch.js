@@ -162,7 +162,7 @@ AsyncTryCatch.timerWrapper = function timerWrapper( originalMethod , fn )
 	wrapperFn = function() {
 		try {
 			global.AsyncTryCatch.stack.push( context ) ;
-			fn.apply( this , arguments ) ;
+			return fn.apply( this , arguments ) ;
 			global.AsyncTryCatch.stack.pop() ;
 		}
 		catch ( error ) {
@@ -198,7 +198,7 @@ AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod ,
 	
 	context = global.AsyncTryCatch.stack[ global.AsyncTryCatch.stack.length - 1 ] ;
 	
-	// Assume that the function is only wrapped once per eventEmitter
+	// Make sure that the function is only wrapped once per eventEmitter
 	if ( this.__fnToWrapperMap )
 	{
 		wrapperFn = this.__fnToWrapperMap.get( fn ) ;
@@ -214,7 +214,7 @@ AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod ,
 		wrapperFn = function() {
 			try {
 				global.AsyncTryCatch.stack.push( context ) ;
-				fn.apply( this , arguments ) ;
+				return fn.apply( this , arguments ) ;
 				global.AsyncTryCatch.stack.pop() ;
 			}
 			catch ( error ) {
@@ -513,7 +513,7 @@ process.umask = function() { return 0; };
 },{}],4:[function(require,module,exports){
 module.exports={
   "name": "async-try-catch",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {
