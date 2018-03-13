@@ -1,6 +1,6 @@
 {
   "name": "async-try-catch",
-  "version": "0.3.4",
+  "version": "0.3.6",
   "description": "Async try catch",
   "main": "lib/AsyncTryCatch.js",
   "directories": {
@@ -12,8 +12,8 @@
     "expect.js": "^0.3.1",
     "jshint": "^2.9.3",
     "mocha": "^3.0.2",
-    "nextgen-events": "^0.9.7",
-    "uglify-js": "^2.7.3"
+    "nextgen-events": "^0.12.3",
+    "uglify-js-es6": "^2.8.9"
   },
   "scripts": {
     "test": "mocha -R dot"
@@ -36,7 +36,7 @@
     "title": "Async Try-Catch",
     "years": [
       2015,
-      2016
+      2018
     ],
     "owner": "Cédric Ronvel"
   }
