@@ -1,4 +1,4 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.AsyncTryCatch = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.AsyncTryCatch = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 (function (process,global){
 /*
 	Async Try-Catch
@@ -79,6 +79,7 @@ if ( process.browser && ! global.setImmediate ) {
 if ( ! global.Vanilla ) { global.Vanilla = {} ; }
 if ( ! global.Vanilla.setTimeout ) { global.Vanilla.setTimeout = setTimeout ; }
 if ( ! global.Vanilla.setImmediate ) { global.Vanilla.setImmediate = setImmediate ; }
+if ( ! global.Vanilla.setInterval ) { global.Vanilla.setInterval = setInterval ; }
 if ( ! global.Vanilla.nextTick ) { global.Vanilla.nextTick = process.nextTick ; }
 
 
@@ -135,7 +136,7 @@ AsyncTryCatch.prototype.callCatchFn = function callCatchFn( error ) {
 
 
 
-// for setTimeout(), setImmediate(), process.nextTick()
+// for setTimeout(), setImmediate(), setInterval(), process.nextTick()
 AsyncTryCatch.timerWrapper = function timerWrapper( originalMethod , fn , ... args ) {
 	var context , wrapperFn ;
 
@@ -150,7 +151,8 @@ AsyncTryCatch.timerWrapper = function timerWrapper( originalMethod , fn , ... ar
 
 		try {
 			global.AsyncTryCatch.stack.push( context ) ;
-			returnVal = fn.call( this , ... wrapperArgs ) ;
+			//returnVal = fn.call( this , ... wrapperArgs ) ;
+			returnVal = fn( ... wrapperArgs ) ;
 			global.AsyncTryCatch.stack.pop() ;
 			return returnVal ;
 		}
@@ -232,6 +234,7 @@ AsyncTryCatch.addListenerWrapper = function addListenerWrapper( originalMethod ,
 
 AsyncTryCatch.setTimeout = AsyncTryCatch.timerWrapper.bind( undefined , global.Vanilla.setTimeout ) ;
 AsyncTryCatch.setImmediate = AsyncTryCatch.timerWrapper.bind( undefined , global.Vanilla.setImmediate ) ;
+AsyncTryCatch.setInterval = AsyncTryCatch.timerWrapper.bind( undefined , global.Vanilla.setInterval ) ;
 AsyncTryCatch.nextTick = AsyncTryCatch.timerWrapper.bind( process , global.Vanilla.nextTick ) ;
 
 // NodeEvents on()/addListener() replacement
@@ -300,7 +303,8 @@ AsyncTryCatch.substitute = function substitute() {
 	global.AsyncTryCatch.substituted = true ;
 
 	global.setTimeout = AsyncTryCatch.setTimeout ;
-	global.setImmediate = AsyncTryCatch.setTimeout ;
+	global.setImmediate = AsyncTryCatch.setImmediate ;
+	global.setInterval = AsyncTryCatch.setInterval ;
 	process.nextTick = AsyncTryCatch.nextTick ;
 
 	// Global is checked first, in case we are running inside a browser
@@ -349,6 +353,7 @@ AsyncTryCatch.restore = function restore() {
 
 	global.setTimeout = global.Vanilla.setTimeout ;
 	global.setImmediate = global.Vanilla.setImmediate ;
+	global.setInterval = global.Vanilla.setInterval ;
 	process.nextTick = global.Vanilla.nextTick ;
 
 	if ( AsyncTryCatch.NodeEvents ) {
@@ -543,6 +548,10 @@ process.off = noop;
 process.removeListener = noop;
 process.removeAllListeners = noop;
 process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
 
 process.binding = function (name) {
     throw new Error('process.binding is not supported');
@@ -565,11 +574,10 @@ module.exports={
   },
   "dependencies": {},
   "devDependencies": {
-    "browserify": "^13.1.0",
+    "browserify": "^16.2.2",
+    "doormen": "^0.7.20",
     "expect.js": "^0.3.1",
-    "jshint": "^2.9.3",
-    "mocha": "^3.0.2",
-    "nextgen-events": "^0.12.3",
+    "nextgen-events": "^0.14.6",
     "uglify-js-es6": "^2.8.9"
   },
   "scripts": {
@@ -598,5 +606,6 @@ module.exports={
     "owner": "Cédric Ronvel"
   }
 }
+
 },{}]},{},[1])(1)
 });

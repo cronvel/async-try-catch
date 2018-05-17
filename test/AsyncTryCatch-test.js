@@ -418,6 +418,8 @@ describe( "NextGen Events" , function() {
 
 
 describe( "Full NextGen Events test suite execution" , function() {
+	global.expect = require( 'doormen' ).expect ;
+	it.optional = it.skip ;
 	require( 'nextgen-events/test/NextGenEvents-test.js' ) ;
 } ) ;
 	
